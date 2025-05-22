@@ -1,1 +1,0 @@
-# Operatsion-tizimlar
