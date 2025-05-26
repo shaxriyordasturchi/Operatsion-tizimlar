@@ -1,24 +1,24 @@
+# app.py
 import streamlit as st
-from datetime import datetime, timedelta
+from datetime import datetime
 import sqlite3
 from telegram import Bot
+import time  # real-time uchun
 
-# TELEGRAM BOT TOKEN va CHAT ID ni o'zgartiring:
+# Telegram sozlamalari
 TELEGRAM_BOT_TOKEN = "7817066006:AAHRcf_wJO4Kmq5PvOrdq5BPi_eyv5vYqaM"
-CHAT_ID =7750409176   # Sizning Telegram chat ID raqamingiz (raqam ko‘rinishida)
-
+CHAT_ID = 7750409176
 bot = Bot(token=TELEGRAM_BOT_TOKEN)
 
 def send_telegram_message(message: str):
     try:
         bot.send_message(chat_id=CHAT_ID, text=message, parse_mode="HTML")
-        print("✅ Telegramga habar yuborildi!")
     except Exception as e:
-        print(f"❌ Telegramga habar yuborishda xatolik: {e}")
+        st.error(f"❌ Telegram xabari yuborilmadi: {e}")
 
 DB_PATH = "worktime.db"
 
-# Foydalanuvchilar lug'ati: username: (password, firstname, lastname)
+# Foydalanuvchilar
 users = {
     "ali": ("1234", "Ali", "Valiyev"),
     "john": ("abcd", "John", "Doe"),
@@ -54,7 +54,7 @@ def log_login(username, firstname, lastname):
               (username, firstname, lastname, now.strftime("%Y-%m-%d %H:%M:%S")))
     conn.commit()
     conn.close()
-    send_telegram_message(f"✅ <b>{firstname} {lastname}</b> Xodim <b>KIRDI</b>.\nVaqt: <i>{now.strftime('%Y-%m-%d %H:%M:%S')}</i>")
+    send_telegram_message(f"✅ <b>{firstname} {lastname}</b> KIRDI.\n🕒 {now.strftime('%Y-%m-%d %H:%M:%S')}")
 
 def log_logout(username, firstname, lastname):
     now = datetime.now()
@@ -68,18 +68,18 @@ def log_logout(username, firstname, lastname):
     ''', (now.strftime("%Y-%m-%d %H:%M:%S"), username))
     conn.commit()
     conn.close()
-    send_telegram_message(f"❌ <b>{firstname} {lastname}</b> Xodim <b>CHIQQAN</b>.\nVaqt: <i>{now.strftime('%Y-%m-%d %H:%M:%S')}</i>")
+    send_telegram_message(f"❌ <b>{firstname} {lastname}</b> CHIQDI.\n🕒 {now.strftime('%Y-%m-%d %H:%M:%S')}")
 
 def send_failed_login_alert(username):
     now = datetime.now()
-    send_telegram_message(f"⚠️ Noto‘g‘ri login urinishi: <b>{username}</b>\nVaqt: {now.strftime('%Y-%m-%d %H:%M:%S')}")
+    send_telegram_message(f"⚠️ Noto‘g‘ri login: <b>{username}</b>\n🕒 {now.strftime('%Y-%m-%d %H:%M:%S')}")
 
 def get_attendance_summary():
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
     c.execute('''
         SELECT firstname, lastname, login_time, logout_time FROM attendance
-        WHERE login_time >= date('now','-1 day')
+        WHERE login_time >= date('now','start of day')
     ''')
     rows = c.fetchall()
     conn.close()
@@ -88,18 +88,28 @@ def get_attendance_summary():
 def send_daily_report():
     rows = get_attendance_summary()
     if not rows:
-        send_telegram_message("📅 Bugungi ish faoliyati haqida ma'lumot yo'q.")
+        send_telegram_message("📅 Bugungi ish faoliyati haqida yozuv yo‘q.")
         return
-    msg = "📅 Bugungi ish faoliyati:\n"
+    msg = "📅 <b>Bugungi ish faoliyati:</b>\n"
     for row in rows:
         firstname, lastname, login_time, logout_time = row
-        logout_time = logout_time if logout_time else "Hozircha chiqmagan"
-        msg += f"- {firstname} {lastname}: Kirish: {login_time}, Chiqish: {logout_time}\n"
+        logout_time = logout_time if logout_time else "🚪 Chiqmagan"
+        msg += f"👤 {firstname} {lastname}\n  Kirish: {login_time}\n  Chiqish: {logout_time}\n"
     send_telegram_message(msg)
 
-def main():
-    st.title("Xodimlar Kirish/Chiqish Tizimi")
+def show_realtime_clock():
+    clock_placeholder = st.empty()
+    while True:
+        now = datetime.now().strftime("%Y-%m-%d  ⏰ %H:%M:%S")
+        clock_placeholder.markdown(f"### 📆 Bugungi sana va vaqt: `{now}`")
+        time.sleep(1)
+        break  # faqat bitta marta ko‘rsatamiz, Streamlit sahifa har doim qayta yuklanadi
 
+def main():
+    st.set_page_config(page_title="Xodimlar Monitoring", page_icon="🧑‍💼", layout="centered")
+    st.title("🧑‍💼 Xodimlar Kirish/Chiqish Paneli")
+
+    show_realtime_clock()
     init_db()
 
     menu = ["Kirish", "Chiqish", "Kunlik hisobot yuborish (admin)"]
@@ -108,34 +118,32 @@ def main():
     login = st.text_input("Login")
     password = st.text_input("Parol", type="password")
 
-    if st.button(choice):
+    if st.button("Tasdiqlash"):
         if choice == "Kunlik hisobot yuborish (admin)":
             send_daily_report()
-            st.success("Kunlik hisobot Telegramga yuborildi.")
+            st.success("✅ Hisobot Telegramga yuborildi.")
             return
 
         firstname, lastname = check_user(login, password)
-        if firstname and lastname:
+        if firstname:
             if choice == "Kirish":
                 log_login(login, firstname, lastname)
-                st.success(f"{firstname} {lastname}, tizimga muvaffaqiyatli kirdingiz.")
+                st.success(f"Xush kelibsiz, {firstname} {lastname}!")
             else:
                 log_logout(login, firstname, lastname)
-                st.success(f"{firstname} {lastname}, tizimdan muvaffaqiyatli chiqdiz.")
+                st.success(f"Xayr, {firstname} {lastname}!")
         else:
             send_failed_login_alert(login)
-            st.error("Login yoki parol noto‘g‘ri.")
+            st.error("❌ Login yoki parol noto‘g‘ri!")
 
-    # Ish vaqti jadvali
-    st.subheader("Bugungi ish vaqti (kirish/chiqish)")
+    st.subheader("📊 Bugungi qatnashuv:")
     rows = get_attendance_summary()
     if rows:
         for row in rows:
-            firstname, lastname, login_time, logout_time = row
-            logout_time = logout_time if logout_time else "Hozircha chiqmagan"
-            st.write(f"{firstname} {lastname}: Kirish: {login_time}, Chiqish: {logout_time}")
+            fn, ln, li, lo = row
+            st.write(f"👤 {fn} {ln}: 🟢 {li} | 🔴 {lo or 'Hali chiqmagan'}")
     else:
-        st.write("Bugungi yozuvlar mavjud emas.")
+        st.info("Bugun uchun hech qanday yozuv yo‘q.")
 
 if __name__ == "__main__":
     main()
