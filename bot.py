@@ -1,23 +1,22 @@
 import sqlite3
-from datetime import datetime
 import pandas as pd
+from datetime import datetime
 import pytz
-from telegram import Bot, Update
+from telegram import Bot, Update, ReplyKeyboardMarkup
 from telegram.ext import CommandHandler, MessageHandler, Filters, Updater, CallbackContext
 
-# ====== Vaqt funksiyasi ======
+# Vaqt zonasi
 def get_current_time_tashkent():
     tz = pytz.timezone('Asia/Tashkent')
     return datetime.now(tz).strftime("%Y-%m-%d %H:%M:%S")
 
-# ====== CONFIGURATION ======
+# CONFIG
 TELEGRAM_BOT_TOKEN = "7817066006:AAHRcf_wJO4Kmq5PvOrdq5BPi_eyv5vYqaM"
-ADMIN_IDS = [7750409176]  # Replace with your Telegram user ID
-
+ADMIN_IDS = [ 7750409176]  # O'zingizning Telegram ID'ingizni yozing
 bot = Bot(token=TELEGRAM_BOT_TOKEN)
 DB_PATH = "employees.db"
 
-# ====== DATABASE INIT ======
+# DATABASE INIT
 def init_db():
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
@@ -34,11 +33,16 @@ def init_db():
     conn.commit()
     conn.close()
 
-# ====== BOT COMMANDS ======
-
+# START WITH MENU
 def start(update: Update, context: CallbackContext):
-    update.message.reply_text("👋 Xush kelibsiz! /salary, /report, /add_user, /remove_user buyrug'idan foydalaning.")
+    keyboard = [
+        ["👤 Maoshni ko‘rish", "📥 Hisobot"],
+        ["➕ Foydalanuvchi qo‘shish", "❌ Foydalanuvchini o‘chirish"]
+    ]
+    reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
+    update.message.reply_text("👋 Xush kelibsiz! Quyidagi menyudan tanlang:", reply_markup=reply_markup)
 
+# MAOSH
 def salary(update: Update, context: CallbackContext):
     username = update.message.from_user.username
     conn = sqlite3.connect(DB_PATH)
@@ -51,6 +55,7 @@ def salary(update: Update, context: CallbackContext):
     else:
         update.message.reply_text("❌ Siz ro'yxatdan o'tmagansiz.")
 
+# ADD USER
 def add_user(update: Update, context: CallbackContext):
     if update.message.from_user.id not in ADMIN_IDS:
         return update.message.reply_text("❌ Sizga ruxsat yo‘q.")
@@ -63,9 +68,10 @@ def add_user(update: Update, context: CallbackContext):
         conn.commit()
         conn.close()
         update.message.reply_text(f"✅ {fullname} ({username}) tizimga qo‘shildi.")
-    except Exception as e:
-        update.message.reply_text("⚠️ Foydalanuvchi qo‘shishda xatolik: /add_user username ism familiya")
+    except:
+        update.message.reply_text("⚠️ To‘g‘ri format: /add_user username ism familiya")
 
+# REMOVE USER
 def remove_user(update: Update, context: CallbackContext):
     if update.message.from_user.id not in ADMIN_IDS:
         return update.message.reply_text("❌ Sizga ruxsat yo‘q.")
@@ -78,8 +84,9 @@ def remove_user(update: Update, context: CallbackContext):
         conn.close()
         update.message.reply_text(f"🗑️ {username} tizimdan o‘chirildi.")
     except:
-        update.message.reply_text("⚠️ Foydalanuvchini o‘chirishda xatolik: /remove_user username")
+        update.message.reply_text("⚠️ To‘g‘ri format: /remove_user username")
 
+# HISOBOT
 def report(update: Update, context: CallbackContext):
     if update.message.from_user.id not in ADMIN_IDS:
         return update.message.reply_text("❌ Sizga ruxsat yo‘q.")
@@ -91,26 +98,26 @@ def report(update: Update, context: CallbackContext):
     ''', conn)
     conn.close()
     if df.empty:
-        return update.message.reply_text("🗂️ Hozircha ma'lumot yo‘q.")
+        return update.message.reply_text("🗂️ Ma'lumot topilmadi.")
     file_path = "/tmp/hisobot.xlsx"
     df.to_excel(file_path, index=False)
     update.message.reply_document(document=open(file_path, 'rb'), filename="hisobot.xlsx")
 
-# ====== ATTENDANCE LOGGING (Login/Logout) ======
-def log_attendance(username, action="login"):
-    now = get_current_time_tashkent()  # 👉 O'zbekiston vaqti bilan
-    conn = sqlite3.connect(DB_PATH)
-    c = conn.cursor()
-    if action == "login":
-        c.execute("INSERT INTO attendance (username, login_time) VALUES (?, ?)", (username, now))
-        bot.send_message(chat_id=ADMIN_IDS[0], text=f"✅ {username} tizimga kirdi. 🕒 {now}")
-    elif action == "logout":
-        c.execute("UPDATE attendance SET logout_time = ? WHERE username = ? AND logout_time IS NULL", (now, username))
-        bot.send_message(chat_id=ADMIN_IDS[0], text=f"🚪 {username} tizimdan chiqdi. 🕒 {now}")
-    conn.commit()
-    conn.close()
+# BUTTON FUNCTION
+def handle_buttons(update: Update, context: CallbackContext):
+    text = update.message.text
+    if text == "👤 Maoshni ko‘rish":
+        salary(update, context)
+    elif text == "📥 Hisobot":
+        report(update, context)
+    elif text == "➕ Foydalanuvchi qo‘shish":
+        update.message.reply_text("Format: /add_user username ism familiya")
+    elif text == "❌ Foydalanuvchini o‘chirish":
+        update.message.reply_text("Format: /remove_user username")
+    else:
+        update.message.reply_text("🤖 Noma'lum buyruq.")
 
-# ====== MAIN ======
+# MAIN
 def main():
     init_db()
     updater = Updater(TELEGRAM_BOT_TOKEN, use_context=True)
@@ -121,8 +128,10 @@ def main():
     dp.add_handler(CommandHandler("add_user", add_user))
     dp.add_handler(CommandHandler("remove_user", remove_user))
     dp.add_handler(CommandHandler("report", report))
+    dp.add_handler(MessageHandler(Filters.text & ~Filters.command, handle_buttons))
 
     updater.start_polling()
     updater.idle()
 
-main()
+if __name__ == '__main__':
+   
