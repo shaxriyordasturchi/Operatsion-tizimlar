@@ -8,7 +8,7 @@ TELEGRAM_BOT_TOKEN = "7899690264:AAH14dhEGOlvRoc4CageMH6WYROMEE5NmkY"
 # Agar shaxsiy chat bo'lsa, user ID, guruh bo'lsa, - bilan boshlanadigan raqam bo'ladi.
 CHAT_ID =952580219 # misol uchun: 987654321 yoki -123456789
 
-bot = Bot(token=TELEGRAM_BOT_TOKEN)
+bot = Bot(token=7899690264:AAH14dhEGOlvRoc4CageMH6WYROMEE5NmkY)
 
 def send_telegram_message(text: str):
     """
@@ -16,7 +16,7 @@ def send_telegram_message(text: str):
     text: yuboriladigan matn (HTML parse mode bilan qo'llanadi)
     """
     try:
-        bot.send_message(chat_id=CHAT_ID, text=text, parse_mode="HTML")
+        bot.send_message(952580219, text=text, parse_mode="HTML")
         print("✅ Telegramga xabar yuborildi.")
     except TelegramError as e:
         print(f"❌ Telegramga yuborishda muammo yuz berdi: {e}")
