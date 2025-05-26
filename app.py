@@ -1,41 +1,22 @@
 import streamlit as st
+from db import init_db, log_action
+from bot import send_telegram_message
 
-st.set_page_config(page_title="Operatsion Tizimlar", layout="wide")
+init_db()
 
-st.title("📚 Operatsion Tizimlar Fani")
+st.title("👨‍💼 Xodim Kirish Tizimi")
 
-st.write("""
-**Operatsion tizimlar** — bu kompyuterning apparat va dasturiy ta’minot resurslarini boshqaruvchi dasturiy vosita.  
-U foydalanuvchi va kompyuter apparati o‘rtasida vositachi sifatida ishlaydi.  
-Bugungi kunda eng mashhur operatsion tizimlarga Windows, Linux, macOS va Unix kiradi.
-""")
+login = st.text_input("Login")
+password = st.text_input("Parol", type="password")
 
-st.header("Sayt haqida")
-st.write("""
-Ushbu sayt yordamida siz:
-- Operatsion tizimlar asoslari bilan tanishasiz
-- Kernel, fayl tizimi kabi asosiy komponentlarni o‘rganasiz
-- Operatsion tizimlarning turlari va vazifalari haqida ma’lumot olasiz
-- Oddiy Linux buyruqlari va tushunchalar bilan tanishasiz
-""")
-
-st.header("Navigatsiya")
-st.write("""
-Yon menyudan kerakli bo‘limni tanlab, o‘rganishni boshlang.  
-Har bir bo‘limda mavzu bo‘yicha qisqacha tushuntirish va kod namunalar mavjud.  
-Shuningdek, har bir bo‘lim oxirida amaliy kod bloklari yoki buyruqlar ko‘rsatilgan.
-""")
-
-st.header("Qanday foydalanish mumkin?")
-st.write("""
-1. Yon menyudan mavzuni tanlang  
-2. Matnni diqqat bilan o‘qing  
-3. Kerak bo‘lsa, ko‘rsatilgan buyruqlarni o‘z Linux terminalingizda sinab ko‘ring  
-4. Savollaringiz bo‘lsa, keyingi bo‘limlarda qidirib ko‘ring yoki admin bilan bog‘laning  
-""")
-
-st.markdown("---")
-
-st.info("🔔 Bu sayt ta’lim maqsadida tuzilgan va real tizimlarda sinab ko‘rish uchun mos keladi.")
-
-st.write("Yana qo‘shimcha savollar yoki takliflar bo‘lsa, bemalol so‘rashingiz mumkin!")
+if st.button("Kirish"):
+    # Bu yerda haqiqiy tekshiruv bo'lishi kerak
+    if login == "test" and password == "1234":
+        firstname, lastname = "Ali", "Valiyev"
+        timestamp = log_action(login, firstname, lastname, "Kirish", "Qashqadaryo")
+        send_telegram_message(
+            f"👤 <b>{firstname} {lastname}</b>\n🕒 <b>{timestamp}</b>\n📍 <b>Qashqadaryo</b>\n🔔 <b>Kirish amalga oshdi</b>"
+        )
+        st.success("Kirish muvaffaqiyatli!")
+    else:
+        st.error("Login yoki parol noto‘g‘ri!")
