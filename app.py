@@ -92,7 +92,7 @@ def get_attendance_summary():
 def send_daily_report():
     rows = get_attendance_summary()
     if not rows:
-        send_telegram_message("📅 Bugungi ish faoliyati haqida yozuv yo‘q.")
+        send_telegram_message("📅 Bugungi ish faoliyati haqida ma'lumot yo'q.")
         return
     msg = "📅 <b>Bugungi ish faoliyati:</b>\n"
     for row in rows:
