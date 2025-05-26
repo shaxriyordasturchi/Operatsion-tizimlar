@@ -1,8 +1,8 @@
-# app.py
 import streamlit as st
 from datetime import datetime
 import sqlite3
 from telegram import Bot
+import pytz
 import time  # real-time uchun
 
 # Telegram sozlamalari
@@ -41,13 +41,17 @@ def init_db():
     conn.commit()
     conn.close()
 
+def get_current_time():
+    tz = pytz.timezone('Asia/Tashkent')
+    return datetime.now(tz)
+
 def check_user(username, password):
     if username in users and users[username][0] == password:
         return users[username][1], users[username][2]
     return None, None
 
 def log_login(username, firstname, lastname):
-    now = datetime.now()
+    now = get_current_time()
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
     c.execute("INSERT INTO attendance (username, firstname, lastname, login_time) VALUES (?, ?, ?, ?)",
@@ -57,7 +61,7 @@ def log_login(username, firstname, lastname):
     send_telegram_message(f"✅ <b>{firstname} {lastname}</b> KIRDI.\n🕒 {now.strftime('%Y-%m-%d %H:%M:%S')}")
 
 def log_logout(username, firstname, lastname):
-    now = datetime.now()
+    now = get_current_time()
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
     c.execute('''
@@ -71,7 +75,7 @@ def log_logout(username, firstname, lastname):
     send_telegram_message(f"❌ <b>{firstname} {lastname}</b> CHIQDI.\n🕒 {now.strftime('%Y-%m-%d %H:%M:%S')}")
 
 def send_failed_login_alert(username):
-    now = datetime.now()
+    now = get_current_time()
     send_telegram_message(f"⚠️ Noto‘g‘ri login: <b>{username}</b>\n🕒 {now.strftime('%Y-%m-%d %H:%M:%S')}")
 
 def get_attendance_summary():
@@ -99,11 +103,8 @@ def send_daily_report():
 
 def show_realtime_clock():
     clock_placeholder = st.empty()
-    while True:
-        now = datetime.now().strftime("%Y-%m-%d  ⏰ %H:%M:%S")
-        clock_placeholder.markdown(f"### 📆 Bugungi sana va vaqt: `{now}`")
-        time.sleep(1)
-        break  # faqat bitta marta ko‘rsatamiz, Streamlit sahifa har doim qayta yuklanadi
+    now = get_current_time().strftime("%Y-%m-%d  ⏰ %H:%M:%S")
+    clock_placeholder.markdown(f"### 📆 Bugungi sana va vaqt: `{now}`")
 
 def main():
     st.set_page_config(page_title="Xodimlar Monitoring", page_icon="🧑‍💼", layout="centered")
