@@ -4,7 +4,7 @@ from telegram import Bot
 TELEGRAM_BOT_TOKEN = "7817066006:AAHRcf_wJO4Kmq5PvOrdq5BPi_eyv5vYqaM"
 
 # Telegram chat ID (o'zingizning user ID yoki guruh ID raqami)
-CHAT_ID = 7750409176  # raqam ko'rinishida, masalan: 987654321
+CHAT_ID = -1002671611327  # raqam ko'rinishida, masalan: 987654321
 
 bot = Bot(token=TELEGRAM_BOT_TOKEN)
 
