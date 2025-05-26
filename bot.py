@@ -2,13 +2,13 @@ from telegram import Bot
 from telegram.error import TelegramError
 
 # Mana bu yerga o'zingizning bot tokeningizni joylashtiring
-TELEGRAM_BOT_TOKEN = "7899690264:AAH14dhEGOlvRoc4CageMH6WYROMEE5NmkY"
+TELEGRAM_BOT_TOKEN = "7817066006:AAHRcf_wJO4Kmq5PvOrdq5BPi_eyv5vYqaM"
 
 # Mana bu yerga o'zingizning Telegram chat ID raqamingizni kiriting (raqam ko'rinishida)
 # Agar shaxsiy chat bo'lsa, user ID, guruh bo'lsa, - bilan boshlanadigan raqam bo'ladi.
 CHAT_ID =952580219 # misol uchun: 987654321 yoki -123456789
 
-bot = Bot(token=7899690264:AAH14dhEGOlvRoc4CageMH6WYROMEE5NmkY)
+bot = Bot(token=7817066006:AAHRcf_wJO4Kmq5PvOrdq5BPi_eyv5vYqaM)
 
 def send_telegram_message(text: str):
     """
