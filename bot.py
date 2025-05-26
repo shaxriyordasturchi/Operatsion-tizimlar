@@ -1,12 +1,14 @@
 import sqlite3
 from datetime import datetime
 import pandas as pd
+import pytz
 from telegram import Bot, Update
 from telegram.ext import CommandHandler, MessageHandler, Filters, Updater, CallbackContext
+
+# ====== Vaqt funksiyasi ======
 def get_current_time_tashkent():
     tz = pytz.timezone('Asia/Tashkent')
     return datetime.now(tz).strftime("%Y-%m-%d %H:%M:%S")
-
 
 # ====== CONFIGURATION ======
 TELEGRAM_BOT_TOKEN = "7817066006:AAHRcf_wJO4Kmq5PvOrdq5BPi_eyv5vYqaM"
@@ -94,15 +96,17 @@ def report(update: Update, context: CallbackContext):
     df.to_excel(file_path, index=False)
     update.message.reply_document(document=open(file_path, 'rb'), filename="hisobot.xlsx")
 
-# ====== ATTENDANCE LOGGING EXAMPLE FUNCTION ======
+# ====== ATTENDANCE LOGGING (Login/Logout) ======
 def log_attendance(username, action="login"):
-    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    now = get_current_time_tashkent()  # 👉 O'zbekiston vaqti bilan
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
     if action == "login":
         c.execute("INSERT INTO attendance (username, login_time) VALUES (?, ?)", (username, now))
+        bot.send_message(chat_id=ADMIN_IDS[0], text=f"✅ {username} tizimga kirdi. 🕒 {now}")
     elif action == "logout":
         c.execute("UPDATE attendance SET logout_time = ? WHERE username = ? AND logout_time IS NULL", (now, username))
+        bot.send_message(chat_id=ADMIN_IDS[0], text=f"🚪 {username} tizimdan chiqdi. 🕒 {now}")
     conn.commit()
     conn.close()
 
