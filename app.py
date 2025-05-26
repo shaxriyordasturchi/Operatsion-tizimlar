@@ -1,7 +1,20 @@
 import streamlit as st
 from datetime import datetime, timedelta
 import sqlite3
-from bot import send_telegram_message
+from telegram import Bot
+
+# TELEGRAM BOT TOKEN va CHAT ID ni o'zgartiring:
+TELEGRAM_BOT_TOKEN = "7817066006:AAHRcf_wJO4Kmq5PvOrdq5BPi_eyv5vYqaM"
+CHAT_ID = -1002671611327  # Sizning Telegram chat ID raqamingiz (raqam ko‘rinishida)
+
+bot = Bot(token=TELEGRAM_BOT_TOKEN)
+
+def send_telegram_message(message: str):
+    try:
+        bot.send_message(chat_id=CHAT_ID, text=message, parse_mode="HTML")
+        print("✅ Telegramga habar yuborildi!")
+    except Exception as e:
+        print(f"❌ Telegramga habar yuborishda xatolik: {e}")
 
 DB_PATH = "worktime.db"
 
@@ -47,7 +60,6 @@ def log_logout(username, firstname, lastname):
     now = datetime.now()
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
-    # So‘nggi login qilingan yozuvga logout vaqtini qo‘yish (agar logout bo‘lmagan yozuv mavjud bo‘lsa)
     c.execute('''
         UPDATE attendance 
         SET logout_time = ? 
