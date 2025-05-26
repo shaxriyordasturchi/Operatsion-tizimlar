@@ -1,8 +1,9 @@
 streamlit
 python-telegram-bot==13.15
-Flask==2.0.1
+Flask
 gunicorn==20.1.0
 pandas
 openpyxl
 schedule
 pytz
+
