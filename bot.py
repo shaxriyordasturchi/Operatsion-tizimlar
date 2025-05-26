@@ -1,147 +1,120 @@
-import logging
-from telegram import Update, Bot
-from telegram.ext import Updater, CommandHandler, CallbackContext, Filters, MessageHandler
+import sqlite3
 from datetime import datetime
+import pandas as pd
+from telegram import Bot, Update
+from telegram.ext import CommandHandler, MessageHandler, Filters, Updater, CallbackContext
 
-# Bot token va admin ID ni kiriting
+# ====== CONFIGURATION ======
 TELEGRAM_BOT_TOKEN = "7817066006:AAHRcf_wJO4Kmq5PvOrdq5BPi_eyv5vYqaM"
-ADMIN_ID = 7750409176
+ADMIN_IDS = [7750409176]  # Replace with your Telegram user ID
 
-# Log sozlamalari
-logging.basicConfig(
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    level=logging.INFO
-)
-logger = logging.getLogger(__name__)
+bot = Bot(token=TELEGRAM_BOT_TOKEN)
+DB_PATH = "employees.db"
 
-# Xodimlar ma'lumotlari: username -> info dict
-employees = {
-    "ali": {"firstname": "Ali", "lastname": "Valiyev", "salary": 0, "logins": [], "logouts": []},
-    "john": {"firstname": "John", "lastname": "Doe", "salary": 0, "logins": [], "logouts": []},
-    "jane": {"firstname": "Jane", "lastname": "Doe", "salary": 0, "logins": [], "logouts": []},
-    # Shu yerga 10 taga to'ldiring...
-}
+# ====== DATABASE INIT ======
+def init_db():
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    c.execute('''CREATE TABLE IF NOT EXISTS users (
+        username TEXT PRIMARY KEY,
+        fullname TEXT,
+        salary INTEGER DEFAULT 0
+    )''')
+    c.execute('''CREATE TABLE IF NOT EXISTS attendance (
+        username TEXT,
+        login_time TEXT,
+        logout_time TEXT
+    )''')
+    conn.commit()
+    conn.close()
 
-def is_admin(user_id):
-    return user_id == ADMIN_ID
+# ====== BOT COMMANDS ======
 
 def start(update: Update, context: CallbackContext):
-    user_id = update.effective_user.id
-    if is_admin(user_id):
-        update.message.reply_text("Salom, admin! Buyruqlar uchun /help yozing.")
+    update.message.reply_text("👋 Xush kelibsiz! /salary, /report, /add_user, /remove_user buyrug'idan foydalaning.")
+
+def salary(update: Update, context: CallbackContext):
+    username = update.message.from_user.username
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    c.execute("SELECT salary FROM users WHERE username = ?", (username,))
+    result = c.fetchone()
+    conn.close()
+    if result:
+        update.message.reply_text(f"💰 Sizning maoshingiz: {result[0]:,} so'm")
     else:
-        update.message.reply_text("Salom, xodim! /login yoki /logout buyruqlaridan foydalaning.")
+        update.message.reply_text("❌ Siz ro'yxatdan o'tmagansiz.")
 
-def help_command(update: Update, context: CallbackContext):
-    user_id = update.effective_user.id
-    if not is_admin(user_id):
-        update.message.reply_text("Faqat admin uchun buyruqlar.")
-        return
-    help_text = (
-        "/employee_count - Xodimlar sonini ko‘rish\n"
-        "/activity - Xodimlarning login/chiqish tarixini ko‘rish\n"
-        "/pay <username> <amount> - Maosh berish\n"
-        "/list - Xodimlar ro‘yxatini ko‘rish\n"
-    )
-    update.message.reply_text(help_text)
-
-def employee_count(update: Update, context: CallbackContext):
-    user_id = update.effective_user.id
-    if not is_admin(user_id):
-        update.message.reply_text("Faqat admin uchun.")
-        return
-    count = len(employees)
-    update.message.reply_text(f"Tizimda jami {count} ta xodim mavjud.")
-
-def activity(update: Update, context: CallbackContext):
-    user_id = update.effective_user.id
-    if not is_admin(user_id):
-        update.message.reply_text("Faqat admin uchun.")
-        return
-    msg = "Xodimlar faoliyati:\n"
-    for username, info in employees.items():
-        logins = ', '.join(dt.strftime("%Y-%m-%d %H:%M:%S") for dt in info["logins"]) or "Yo'q"
-        logouts = ', '.join(dt.strftime("%Y-%m-%d %H:%M:%S") for dt in info["logouts"]) or "Yo'q"
-        msg += f"{info['firstname']} {info['lastname']}:\n  Kirishlar: {logins}\n  Chiqishlar: {logouts}\n"
-    update.message.reply_text(msg)
-
-def pay(update: Update, context: CallbackContext):
-    user_id = update.effective_user.id
-    if not is_admin(user_id):
-        update.message.reply_text("Faqat admin uchun.")
-        return
-    args = context.args
-    if len(args) != 2:
-        update.message.reply_text("Foydalanish: /pay <username> <amount>")
-        return
-    username, amount_str = args
-    if username not in employees:
-        update.message.reply_text("Bunday xodim topilmadi.")
-        return
+def add_user(update: Update, context: CallbackContext):
+    if update.message.from_user.id not in ADMIN_IDS:
+        return update.message.reply_text("❌ Sizga ruxsat yo‘q.")
     try:
-        amount = float(amount_str)
-    except ValueError:
-        update.message.reply_text("Iltimos, to‘g‘ri raqam kiriting.")
-        return
-    employees[username]["salary"] += amount
-    update.message.reply_text(f"{employees[username]['firstname']} {employees[username]['lastname']} ga {amount} so‘m maosh qo‘shildi. Jami: {employees[username]['salary']} so‘m.")
+        username, firstname, lastname = context.args
+        fullname = f"{firstname} {lastname}"
+        conn = sqlite3.connect(DB_PATH)
+        c = conn.cursor()
+        c.execute("INSERT INTO users (username, fullname) VALUES (?, ?)", (username, fullname))
+        conn.commit()
+        conn.close()
+        update.message.reply_text(f"✅ {fullname} ({username}) tizimga qo‘shildi.")
+    except Exception as e:
+        update.message.reply_text("⚠️ Foydalanuvchi qo‘shishda xatolik: /add_user username ism familiya")
 
-def list_employees(update: Update, context: CallbackContext):
-    user_id = update.effective_user.id
-    if not is_admin(user_id):
-        update.message.reply_text("Faqat admin uchun.")
-        return
-    names = [f"{info['firstname']} ({username})" for username, info in employees.items()]
-    update.message.reply_text("Xodimlar ro'yxati:\n" + "\n".join(names))
+def remove_user(update: Update, context: CallbackContext):
+    if update.message.from_user.id not in ADMIN_IDS:
+        return update.message.reply_text("❌ Sizga ruxsat yo‘q.")
+    try:
+        username = context.args[0]
+        conn = sqlite3.connect(DB_PATH)
+        c = conn.cursor()
+        c.execute("DELETE FROM users WHERE username = ?", (username,))
+        conn.commit()
+        conn.close()
+        update.message.reply_text(f"🗑️ {username} tizimdan o‘chirildi.")
+    except:
+        update.message.reply_text("⚠️ Foydalanuvchini o‘chirishda xatolik: /remove_user username")
 
-def login(update: Update, context: CallbackContext):
-    user = update.effective_user
-    username = user.username
-    if not username:
-        update.message.reply_text("Iltimos, Telegram username o‘rnating va qaytadan urinib ko‘ring.")
-        return
-    if username not in employees:
-        update.message.reply_text("Siz ro‘yxatda yo‘qsiz. Admin bilan bog‘laning.")
-        return
-    now = datetime.now()
-    employees[username]["logins"].append(now)
-    update.message.reply_text(f"{employees[username]['firstname']}, siz tizimga {now.strftime('%Y-%m-%d %H:%M:%S')} da kirdingiz.")
-    # Adminga xabar
-    bot.send_message(chat_id=ADMIN_ID, text=f"{employees[username]['firstname']} {employees[username]['lastname']} tizimga kirdi: {now.strftime('%Y-%m-%d %H:%M:%S')}")
+def report(update: Update, context: CallbackContext):
+    if update.message.from_user.id not in ADMIN_IDS:
+        return update.message.reply_text("❌ Sizga ruxsat yo‘q.")
+    conn = sqlite3.connect(DB_PATH)
+    df = pd.read_sql_query('''
+        SELECT u.fullname, u.username, u.salary, a.login_time, a.logout_time
+        FROM users u
+        LEFT JOIN attendance a ON u.username = a.username
+    ''', conn)
+    conn.close()
+    if df.empty:
+        return update.message.reply_text("🗂️ Hozircha ma'lumot yo‘q.")
+    file_path = "/tmp/hisobot.xlsx"
+    df.to_excel(file_path, index=False)
+    update.message.reply_document(document=open(file_path, 'rb'), filename="hisobot.xlsx")
 
-def logout(update: Update, context: CallbackContext):
-    user = update.effective_user
-    username = user.username
-    if not username:
-        update.message.reply_text("Iltimos, Telegram username o‘rnating va qaytadan urinib ko‘ring.")
-        return
-    if username not in employees:
-        update.message.reply_text("Siz ro‘yxatda yo‘qsiz. Admin bilan bog‘laning.")
-        return
-    now = datetime.now()
-    employees[username]["logouts"].append(now)
-    update.message.reply_text(f"{employees[username]['firstname']}, siz tizimdan {now.strftime('%Y-%m-%d %H:%M:%S')} da chiqdingiz.")
-    # Adminga xabar
-    bot.send_message(chat_id=ADMIN_ID, text=f"{employees[username]['firstname']} {employees[username]['lastname']} tizimdan chiqdi: {now.strftime('%Y-%m-%d %H:%M:%S')}")
+# ====== ATTENDANCE LOGGING EXAMPLE FUNCTION ======
+def log_attendance(username, action="login"):
+    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    if action == "login":
+        c.execute("INSERT INTO attendance (username, login_time) VALUES (?, ?)", (username, now))
+    elif action == "logout":
+        c.execute("UPDATE attendance SET logout_time = ? WHERE username = ? AND logout_time IS NULL", (now, username))
+    conn.commit()
+    conn.close()
 
+# ====== MAIN ======
 def main():
-    updater = Updater(token=TELEGRAM_BOT_TOKEN, use_context=True)
-    global bot
-    bot = updater.bot
-
+    init_db()
+    updater = Updater(TELEGRAM_BOT_TOKEN, use_context=True)
     dp = updater.dispatcher
 
     dp.add_handler(CommandHandler("start", start))
-    dp.add_handler(CommandHandler("help", help_command))
-    dp.add_handler(CommandHandler("employee_count", employee_count))
-    dp.add_handler(CommandHandler("activity", activity))
-    dp.add_handler(CommandHandler("pay", pay))
-    dp.add_handler(CommandHandler("list", list_employees))
-    dp.add_handler(CommandHandler("login", login))
-    dp.add_handler(CommandHandler("logout", logout))
+    dp.add_handler(CommandHandler("salary", salary))
+    dp.add_handler(CommandHandler("add_user", add_user))
+    dp.add_handler(CommandHandler("remove_user", remove_user))
+    dp.add_handler(CommandHandler("report", report))
 
     updater.start_polling()
     updater.idle()
 
-if __name__ == "__main__":
-    main()
+main()
