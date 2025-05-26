@@ -54,7 +54,7 @@ def log_login(username, firstname, lastname):
               (username, firstname, lastname, now.strftime("%Y-%m-%d %H:%M:%S")))
     conn.commit()
     conn.close()
-    send_telegram_message(f"✅ <b>{firstname} {lastname}</b> foydalanuvchisi <b>KIRDI</b>.\nVaqt: <i>{now.strftime('%Y-%m-%d %H:%M:%S')}</i>")
+    send_telegram_message(f"✅ <b>{firstname} {lastname}</b> Xodim <b>KIRDI</b>.\nVaqt: <i>{now.strftime('%Y-%m-%d %H:%M:%S')}</i>")
 
 def log_logout(username, firstname, lastname):
     now = datetime.now()
@@ -68,7 +68,7 @@ def log_logout(username, firstname, lastname):
     ''', (now.strftime("%Y-%m-%d %H:%M:%S"), username))
     conn.commit()
     conn.close()
-    send_telegram_message(f"❌ <b>{firstname} {lastname}</b> foydalanuvchisi <b>CHIQQAN</b>.\nVaqt: <i>{now.strftime('%Y-%m-%d %H:%M:%S')}</i>")
+    send_telegram_message(f"❌ <b>{firstname} {lastname}</b> Xodim <b>CHIQQAN</b>.\nVaqt: <i>{now.strftime('%Y-%m-%d %H:%M:%S')}</i>")
 
 def send_failed_login_alert(username):
     now = datetime.now()
