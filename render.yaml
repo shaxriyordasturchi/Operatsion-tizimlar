@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: employee-login-bot
+    env: python
+    plan: free
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "streamlit run app.py --server.port $PORT"
+    envVars:
+      - key: TELEGRAM_BOT_TOKEN
+        value: "7817066006:AAHRcf_wJO4Kmq5PvOrdq5BPi_eyv5vYqaM"
+      - key: CHAT_ID
+        value: "-1002671611327"
