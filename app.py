@@ -5,7 +5,7 @@ from telegram import Bot
 
 # TELEGRAM BOT TOKEN va CHAT ID ni o'zgartiring:
 TELEGRAM_BOT_TOKEN = "7817066006:AAHRcf_wJO4Kmq5PvOrdq5BPi_eyv5vYqaM"
-CHAT_ID = -1002671611327  # Sizning Telegram chat ID raqamingiz (raqam ko‘rinishida)
+CHAT_ID =7750409176   # Sizning Telegram chat ID raqamingiz (raqam ko‘rinishida)
 
 bot = Bot(token=TELEGRAM_BOT_TOKEN)
 
