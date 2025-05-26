@@ -3,6 +3,8 @@ from datetime import datetime
 import pandas as pd
 from telegram import Bot, Update
 from telegram.ext import CommandHandler, MessageHandler, Filters, Updater, CallbackContext
+def get_current_time_tashkent():
+    tz = pytz.timezone('Asia/Tashkent')
 
 # ====== CONFIGURATION ======
 TELEGRAM_BOT_TOKEN = "7817066006:AAHRcf_wJO4Kmq5PvOrdq5BPi_eyv5vYqaM"
