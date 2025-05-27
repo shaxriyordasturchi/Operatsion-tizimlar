@@ -1,12 +1,7 @@
 services:
   - type: web
-    name: employee-monitoring
+    name: xodimlar-bot-app
     env: python
     plan: free
-    buildCommand: "pip install -r requirements.txt"
-    startCommand: "streamlit run app.py --server.port $PORT --server.headless true --server.enableCORS false"
-    envVars:
-      - key: TELEGRAM_BOT_TOKEN
-        value: "7817066006:AAHRcf_wJO4Kmq5PvOrdq5BPi_eyv5vYqaM"
-      - key: ADMIN_CHAT_ID
-        value: "7750409176"
+    buildCommand: ""
+    startCommand: streamlit run app.py --server.port=$PORT
