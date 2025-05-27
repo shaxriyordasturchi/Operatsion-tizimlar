@@ -1,4 +1,4 @@
-from telegram import Update, ReplyKeyboardMarkup, KeyboardButton, InputFile
+from telegram import Update, ReplyKeyboardMarkup, KeyboardButton
 from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackContext
 import sqlite3
 from datetime import datetime, time
@@ -23,7 +23,7 @@ def get_current_time():
 def format_time(dt):
     return dt.strftime("%Y-%m-%d %H:%M:%S")
 
-# Parolni hash qilish
+# Parolni hash qilish (siz hozircha ishlatmaysiz, keyinchalik kerak bo'lsa)
 def hash_password(password):
     salt = bcrypt.gensalt()
     hashed = bcrypt.hashpw(password.encode('utf-8'), salt)
@@ -88,7 +88,7 @@ def init_db():
     conn.commit()
     conn.close()
 
-# Login funksiyasi (yangi versiya)
+# Login funksiyasi
 def log_login(username, photo_path=None, location=None):
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
@@ -106,11 +106,12 @@ def log_login(username, photo_path=None, location=None):
                      VALUES (?, ?, ?, ?, ?, ?, ?)''',
                   (username, firstname, lastname, format_time(now), photo_path, str(location), is_late))
         conn.commit()
-    
+        conn.close()
+        return firstname, lastname, now, is_late
     conn.close()
-    return firstname, lastname, now, is_late
+    return None, None, None, None
 
-# Logout funksiyasi (yangi versiya)
+# Logout funksiyasi
 def log_logout(username, photo_path=None):
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
@@ -126,11 +127,12 @@ def log_logout(username, photo_path=None):
                      ORDER BY login_time DESC LIMIT 1''',
                   (format_time(now), photo_path, username))
         conn.commit()
-    
+        conn.close()
+        return firstname, lastname, now
     conn.close()
-    return firstname, lastname, now
+    return None, None, None
 
-# Hisobotlar
+# Hisobotlar uchun (kunlik, haftalik, oylik)
 def generate_report(period='daily'):
     conn = sqlite3.connect(DB_PATH)
     
@@ -140,20 +142,31 @@ def generate_report(period='daily'):
     if period == 'daily':
         query += " WHERE date(login_time) = date('now')"
     elif period == 'weekly':
-        query += " WHERE date(login_time) >= date('now', 'weekday 0', '-7 days')"
+        query += " WHERE date(login_time) >= date('now', '-7 days')"
     elif period == 'monthly':
         query += " WHERE strftime('%Y-%m', login_time) = strftime('%Y-%m', 'now')"
     
     df = pd.read_sql(query, conn)
     conn.close()
     
+    if df.empty:
+        return None
     
+    # Excel faylga saqlash
+    report_path = f"reports/{period}_report_{get_current_time().strftime('%Y%m%d')}.xlsx"
+    os.makedirs(os.path.dirname(report_path), exist_ok=True)
+    df.to_excel(report_path, index=False)
+    
+    return report_path
 
 # Kunlik hisobotni avtomatik yuborish
 def send_daily_report(context: CallbackContext):
     report_path = generate_report('daily')
-    with open(report_path, 'rb') as report:
-        context.bot.send_document(chat_id=admin_chat_id, document=report, caption="📊 Kunlik hisobot")
+    if report_path:
+        with open(report_path, 'rb') as report:
+            context.bot.send_document(chat_id=admin_chat_id, document=report, caption="📊 Kunlik hisobot")
+    else:
+        context.bot.send_message(chat_id=admin_chat_id, text="📊 Kunlik hisobotda ma'lumot yo'q")
 
 # Bot handlers
 def start(update: Update, context: CallbackContext):
@@ -185,8 +198,12 @@ def handle_message(update: Update, context: CallbackContext):
         context.user_data['action'] = 'logout'
 
     elif msg == '📊 Hisobot':
-        report = get_today_report()
-        update.message.reply_text(report)
+        report_path = generate_report('daily')
+        if report_path:
+            with open(report_path, 'rb') as report_file:
+                update.message.reply_document(document=report_file, filename=os.path.basename(report_path))
+        else:
+            update.message.reply_text("Bugungi hisobotda ma'lumot yo'q.")
 
     elif msg == 'ℹ️ Yordam':
         update.message.reply_text("ℹ️ Buyruqlar:\n✅ Kirish – Ishga kirish\n❌ Chiqish – Ishdan chiqish\n📊 Hisobot – Bugungi hisobot\n📍 Joylashuv – Geolokatsiya")
@@ -216,19 +233,28 @@ def handle_photo(update: Update, context: CallbackContext):
     
     if action == 'login':
         location = context.user_data.get('location')
-        firstname, lastname, time, is_late = log_login(user.username, photo_path, location)
+        firstname, lastname, time_, is_late = log_login(user.username, photo_path, location)
         
-        msg = f"✅ {firstname} {lastname} ishga kirdi\n🕒 {format_time(time)}"
+        if firstname is None:
+            update.message.reply_text("❗ Siz tizimda ro'yxatdan o'tmagansiz. Iltimos, administrator bilan bog'laning.")
+            return
+        
+        msg = f"✅ {firstname} {lastname} ishga kirdi\n🕒 {format_time(time_)}"
         if is_late:
             msg += "\n⚠️ Kechikish qayd etildi!"
         
         update.message.reply_text(msg)
-        notify_admins(context, f"🔔 {firstname} {lastname} ishga kirdi.\n🕒 {format_time(time)}", photo_path)
+        notify_admins(context, f"🔔 {firstname} {lastname} ishga kirdi.\n🕒 {format_time(time_)}", photo_path)
     
     elif action == 'logout':
-        firstname, lastname, time = log_logout(user.username, photo_path)
-        update.message.reply_text(f"❌ {firstname} {lastname} ishdan chiqdi\n🕒 {format_time(time)}")
-        notify_admins(context, f"📤 {firstname} {lastname} ishdan chiqdi.\n🕒 {format_time(time)}", photo_path)
+        firstname, lastname, time_ = log_logout(user.username, photo_path)
+        
+        if firstname is None:
+            update.message.reply_text("❗ Siz tizimda ro'yxatdan o'tmagansiz. Iltimos, administrator bilan bog'laning.")
+            return
+        
+        update.message.reply_text(f"❌ {firstname} {lastname} ishdan chiqdi\n🕒 {format_time(time_)}")
+        notify_admins(context, f"📤 {firstname} {lastname} ishdan chiqdi.\n🕒 {format_time(time_)}", photo_path)
     
     # Foydalanuvchi holatini tozalash
     context.user_data.clear()
@@ -237,15 +263,16 @@ def main():
     # Ma'lumotlar bazasini ishga tushirish
     init_db()
     
-    # Avtomatik hisobot jo'natish
-    scheduler = BackgroundScheduler()
-    scheduler.add_job(send_daily_report, 'cron', hour=17, minute=0, args=[Updater.dispatcher])
-    scheduler.start()
-    
     # Botni ishga tushurish
     updater = Updater(TOKEN, use_context=True)
     dp = updater.dispatcher
 
+    # Avtomatik hisobot jo'natish uchun scheduler
+    scheduler = BackgroundScheduler()
+    # Schedulerda send_daily_report funksiyasiga updater.dispatcher ni o'zgaruvchi sifatida yuboramiz:
+    scheduler.add_job(send_daily_report, 'cron', hour=17, minute=0, args=[updater.dispatcher])
+    scheduler.start()
+    
     dp.add_handler(CommandHandler("start", start))
     dp.add_handler(MessageHandler(Filters.text & ~Filters.command, handle_message))
     dp.add_handler(MessageHandler(Filters.location, handle_location))
