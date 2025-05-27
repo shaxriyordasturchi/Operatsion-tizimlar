@@ -5,14 +5,12 @@ import telebot
 
 # --- Telegram bot sozlamalari ---
 TELEGRAM_TOKEN = "7817066006:AAHRcf_wJO4Kmq5PvOrdq5BPi_eyv5vYqaM"
-ADMIN_CHAT_ID = 7750409176  # masalan, int ko'rinishida: 123456789
+ADMIN_CHAT_ID = 7750409176
 
 bot = telebot.TeleBot(TELEGRAM_TOKEN)
 
-# --- Ma'lumotlar bazasi yo'li ---
 DB_PATH = "users_logins.db"
 
-# --- DB yaratish va boshlang'ich sozlash ---
 def init_db():
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
@@ -38,7 +36,6 @@ def init_db():
     conn.commit()
     conn.close()
 
-# --- Foydalanuvchini DB ga qo'shish (oddiy, parol xeshiz) ---
 def add_user(username, password, firstname, lastname):
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
@@ -47,10 +44,9 @@ def add_user(username, password, firstname, lastname):
                   (username, password, firstname, lastname))
         conn.commit()
     except sqlite3.IntegrityError:
-        pass  # foydalanuvchi mavjud bo'lsa o'tamiz
+        pass
     conn.close()
 
-# --- Foydalanuvchi login qilish ---
 def check_user(username, password):
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
@@ -59,7 +55,6 @@ def check_user(username, password):
     conn.close()
     return user
 
-# --- Login vaqtini saqlash ---
 def log_login(user):
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
@@ -70,32 +65,30 @@ def log_login(user):
     conn.close()
     return now
 
-# --- Logout vaqtini saqlash ---
 def log_logout(username):
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
     now = datetime.datetime.now().isoformat(timespec='seconds')
-    # So‘nggi login yozuvining logout_time ni yangilaymiz
+    # SQLite da ORDER BY LIMIT 1 bilan UPDATE ishlamaydi,
+    # shuning uchun avval oxirgi login yozuvining id sini olamiz:
     c.execute("""
-        UPDATE logins SET logout_time=?
-        WHERE username=? AND logout_time IS NULL
-        ORDER BY login_time DESC LIMIT 1
-    """, (now, username))
-    conn.commit()
+        SELECT id FROM logins WHERE username=? AND logout_time IS NULL ORDER BY login_time DESC LIMIT 1
+    """, (username,))
+    last_login = c.fetchone()
+    if last_login:
+        c.execute("UPDATE logins SET logout_time=? WHERE id=?", (now, last_login[0]))
+        conn.commit()
     conn.close()
     return now
 
-# --- Telegramga login xabar yuborish ---
 def send_telegram_login(user, login_time):
     msg = f"✅ Foydalanuvchi {user[2]} {user[3]} ({user[1]}) tizimga kirdi.\nVaqti: {login_time}"
     bot.send_message(chat_id=ADMIN_CHAT_ID, text=msg)
 
-# --- Telegramga logout xabar yuborish ---
 def send_telegram_logout(user, logout_time):
     msg = f"❌ Foydalanuvchi {user[2]} {user[3]} ({user[1]}) tizimdan chiqdi.\nVaqti: {logout_time}"
     bot.send_message(chat_id=ADMIN_CHAT_ID, text=msg)
 
-# --- Hisobot yaratish (faqat oddiy matnli) ---
 def generate_report(period):
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
@@ -123,14 +116,16 @@ def send_report_to_telegram(report):
     if report:
         bot.send_message(chat_id=ADMIN_CHAT_ID, text=report)
 
-# --- Streamlit ilovasi boshlanishi ---
 def main():
     st.title("Login tizimi (Telegram integratsiya bilan)")
-
     init_db()
 
     menu = ["Kirish", "Ro'yxatdan o'tish", "Admin panel"]
     choice = st.sidebar.selectbox("Menu", menu)
+
+    if 'logged_in' not in st.session_state:
+        st.session_state.logged_in = False
+        st.session_state.user = None
 
     if choice == "Ro'yxatdan o'tish":
         st.subheader("Yangi foydalanuvchi ro'yxatdan o'tishi")
@@ -146,26 +141,32 @@ def main():
                 st.warning("Iltimos, barcha maydonlarni to'ldiring.")
 
     elif choice == "Kirish":
-        st.subheader("Foydalanuvchi kirishi")
-        username = st.text_input("Login")
-        password = st.text_input("Parol", type="password")
-        if st.button("Kirish"):
-            user = check_user(username, password)
-            if user:
-                st.success(f"Xush kelibsiz, {user[2]}!")
-                login_time = log_login(user)
-                send_telegram_login(user, login_time)
-
-                if st.button("Chiqish"):
-                    logout_time = log_logout(username)
-                    send_telegram_logout(user, logout_time)
-                    st.info("Tizimdan chiqdingiz.")
-            else:
-                st.error("Login yoki parol noto‘g‘ri!")
+        if not st.session_state.logged_in:
+            st.subheader("Foydalanuvchi kirishi")
+            username = st.text_input("Login", key="login_username")
+            password = st.text_input("Parol", type="password", key="login_password")
+            if st.button("Kirish"):
+                user = check_user(username, password)
+                if user:
+                    st.session_state.logged_in = True
+                    st.session_state.user = user
+                    login_time = log_login(user)
+                    send_telegram_login(user, login_time)
+                    st.success(f"Xush kelibsiz, {user[2]}!")
+                else:
+                    st.error("Login yoki parol noto‘g‘ri!")
+        else:
+            user = st.session_state.user
+            st.write(f"Salom, {user[2]}! Siz tizimdasiz.")
+            if st.button("Chiqish"):
+                logout_time = log_logout(user[1])
+                send_telegram_logout(user, logout_time)
+                st.session_state.logged_in = False
+                st.session_state.user = None
+                st.success("Tizimdan chiqdingiz.")
 
     elif choice == "Admin panel":
         st.subheader("Hisobotlar")
-
         period = st.selectbox("Hisobot davrini tanlang:", ["daily", "weekly", "monthly"])
         if st.button("Hisobotni Telegramga yuborish"):
             report = generate_report(period)
