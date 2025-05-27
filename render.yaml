@@ -1,9 +1,4 @@
-{
-  "builds": [
-    {
-      "src": "app.py",
-      "use": "@railway/python",
-      "config": {services:
+services:
   - type: web
     name: employee-monitoring
     env: python
@@ -12,25 +7,8 @@
     startCommand: "streamlit run app.py --server.port $PORT --server.headless true --server.enableCORS false"
     envVars:
       - key: TELEGRAM_BOT_TOKEN
-        value: 7817066006:AAHRcf_wJO4Kmq5PvOrdq5BPi_eyv5vYqaM
+        value: "7817066006:AAHRcf_wJO4Kmq5PvOrdq5BPi_eyv5vYqaM"
       - key: ADMIN_CHAT_ID
         value: "7750409176"
-      - key: ENCRYPTION_KEY
-        generateValue: true
       - key: PORT
         value: "8080"
-        "runtime": "python-3.10"
-      }
-    }
-  ],
-  "deploy": {
-    "startCommand": "streamlit run app.py --server.port $PORT",
-    "buildCommand": "pip install -r requirements.txt"
-  },
-  "env": {
-    "TELEGRAM_BOT_TOKEN": "7817066006:AAHRcf_wJO4Kmq5PvOrdq5BPi_eyv5vYqaM",
-    "ADMIN_CHAT_ID": "7750409176",
-    "DB_PATH": "worktime.db",
-    "ENCRYPTION_KEY": "your-encryption-key-here"
-  }
-}
