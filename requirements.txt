@@ -8,9 +8,9 @@ schedule==1.1.0
 pytz==2022.7
 bcrypt==4.0.1
 cryptography==39.0.1
-fpdf2==2.7.4  # Changed from fpdf to fpdf2
+fpdf2==2.7.4  # Replaces fpdf
 APScheduler==3.9.1
 Pillow==9.4.0
 sqlalchemy==1.4.46
 python-dotenv==0.21.1
-psycopg2-binary==2.9.5  # For PostgreSQL
+psycopg2-binary==2.9.5
