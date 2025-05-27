@@ -13,9 +13,14 @@ DB_PATH = "worktime.db"
 
 # Foydalanuvchilar (Login, Parol, Ism, Familiya)
 users = {
-    "ali": ("1234", "Ali", "Valiyev"),
-    "john": ("abcd", "John", "Doe"),
-    "jane": ("pass", "Jane", "Doe"),
+    "Ali": ("1234", "Ali", "Valiyev"),
+    "Shaxi": ("4321", "Shaxriyor", "Choliyev"),
+    "Fazi": ("0123", "Fazliddin", "Roziyev"),
+    "Klo":("3210", "Komil", "Rasulov"),
+     "Beha":("1230", "Behruz", "Hikmatov"),
+    "Hyot":("2340", "Hayotbek", "Bozorboyev"),
+    "Shox":("5670", "Shoxjohon", "Karimov"),
+    "Zappi":("0987", "Zafar", "Mominov"),
 }
 
 # Vaqt olish (Toshkent bo‘yicha)
