@@ -6,32 +6,35 @@ from telegram import Bot
 
 # Telegram sozlamalari
 TELEGRAM_BOT_TOKEN = "7817066006:AAHRcf_wJO4Kmq5PvOrdq5BPi_eyv5vYqaM"
-CHAT_ID = 7750409176
+ADMIN_CHAT_ID = "7750409176"  # Hisobot va maoshlar adminga ketadi
 bot = Bot(token=TELEGRAM_BOT_TOKEN)
 
 DB_PATH = "worktime.db"
 
-# Login bo‘yicha user ma’lumotlari
+# Foydalanuvchilar (Login, Parol, Ism, Familiya)
 users = {
     "ali": ("1234", "Ali", "Valiyev"),
     "john": ("abcd", "John", "Doe"),
     "jane": ("pass", "Jane", "Doe"),
 }
 
+# Vaqt olish (Toshkent bo‘yicha)
 def get_current_time():
     tz = pytz.timezone("Asia/Tashkent")
     return datetime.now(tz)
 
+# Telegram xabar jo‘natish
 def send_telegram_message(chat_id, message):
     try:
         bot.send_message(chat_id=chat_id, text=message, parse_mode="HTML")
     except Exception as e:
         st.error(f"Telegram xatosi: {e}")
 
-# Jadval yaratish
+# Baza va jadvallarni yaratish
 def init_db():
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
+    
     c.execute('''
         CREATE TABLE IF NOT EXISTS attendance (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -42,6 +45,7 @@ def init_db():
             logout_time TEXT
         )
     ''')
+    
     c.execute('''
         CREATE TABLE IF NOT EXISTS employees (
             username TEXT PRIMARY KEY,
@@ -51,20 +55,24 @@ def init_db():
             chat_id TEXT
         )
     ''')
-    # Namuna xodim qo‘shish
+
+    # Namuna foydalanuvchilarni qo‘shish
     for k, v in users.items():
         c.execute('''
             INSERT OR IGNORE INTO employees (username, firstname, lastname, salary, chat_id)
             VALUES (?, ?, ?, ?, ?)
-        ''', (k, v[1], v[2], 0, "YOUR_CHAT_ID"))
+        ''', (k, v[1], v[2], 0, ADMIN_CHAT_ID))  # Admin chat IDni vaqtincha ularga biriktiramiz
+
     conn.commit()
     conn.close()
 
+# Foydalanuvchini tekshirish
 def check_user(username, password):
     if username in users and users[username][0] == password:
         return users[username][1], users[username][2]
     return None, None
 
+# Loginni yozish
 def log_login(username, firstname, lastname):
     now = get_current_time()
     conn = sqlite3.connect(DB_PATH)
@@ -73,10 +81,12 @@ def log_login(username, firstname, lastname):
               (username, firstname, lastname, now.strftime("%Y-%m-%d %H:%M:%S")))
     conn.commit()
     conn.close()
+
     chat_id = get_chat_id(username)
     if chat_id:
         send_telegram_message(chat_id, f"✅ <b>{firstname} {lastname}</b> ishga KIRDI.\n🕒 {now.strftime('%Y-%m-%d %H:%M:%S')}")
 
+# Logoutni yozish
 def log_logout(username, firstname, lastname):
     now = get_current_time()
     conn = sqlite3.connect(DB_PATH)
@@ -88,10 +98,12 @@ def log_logout(username, firstname, lastname):
     ''', (now.strftime("%Y-%m-%d %H:%M:%S"), username))
     conn.commit()
     conn.close()
+
     chat_id = get_chat_id(username)
     if chat_id:
         send_telegram_message(chat_id, f"❌ <b>{firstname} {lastname}</b> ishdan CHIQDI.\n🕒 {now.strftime('%Y-%m-%d %H:%M:%S')}")
 
+# Telegram chat ID olish
 def get_chat_id(username):
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
@@ -100,6 +112,7 @@ def get_chat_id(username):
     conn.close()
     return row[0] if row else None
 
+# Bugungi qatnashuvlarni olish
 def get_attendance_summary():
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
@@ -108,14 +121,16 @@ def get_attendance_summary():
     conn.close()
     return data
 
+# Kunlik hisobot yuborish
 def send_daily_report():
     rows = get_attendance_summary()
     msg = "📅 <b>Bugungi ish faoliyati:</b>\n"
     for row in rows:
         fn, ln, li, lo = row
         msg += f"👤 {fn} {ln}\n🔓 Kirish: {li}\n🔒 Chiqish: {lo or '🚪 Chiqmagan'}\n\n"
-    send_telegram_message("YOUR_CHAT_ID", msg)
+    send_telegram_message(ADMIN_CHAT_ID, msg)
 
+# Maosh boshqaruvi
 def manage_salary():
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
@@ -139,6 +154,7 @@ def manage_salary():
         st.success("✅ Barcha maoshlar yuborildi.")
     conn.close()
 
+# Asosiy funksiya
 def main():
     st.set_page_config(page_title="Xodimlar Monitoring", layout="centered")
     st.title("🧑‍💼 Xodimlar Kirish/Chiqish Paneli")
@@ -164,11 +180,12 @@ def main():
 
     elif choice == "Kunlik hisobot yuborish":
         send_daily_report()
-        st.success("✅ Hisobot yuborildi.")
+        st.success("✅ Hisobot Telegramga yuborildi.")
 
     elif choice == "Maosh belgilash va yuborish":
         manage_salary()
 
+    # Bugungi qatnashuvni ko‘rsatish
     st.subheader("📊 Bugungi qatnashuv:")
     for row in get_attendance_summary():
         fn, ln, li, lo = row
