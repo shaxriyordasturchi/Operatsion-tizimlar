@@ -7,7 +7,6 @@ import bcrypt
 import os
 from cryptography.fernet import Fernet
 import pandas as pd
-from fpdf import FPDF
 from apscheduler.schedulers.background import BackgroundScheduler
 
 # Konfiguratsiya
@@ -148,33 +147,7 @@ def generate_report(period='daily'):
     df = pd.read_sql(query, conn)
     conn.close()
     
-    # PDF hisobot yaratish
-    pdf = FPDF()
-    pdf.add_page()
-    pdf.set_font("Arial", size=12)
     
-    title = f"{period.capitalize()} Report".replace('ly', 'l')
-    pdf.cell(200, 10, txt=title, ln=1, align='C')
-    
-    # Jadval uchun sarlavha
-    pdf.cell(40, 10, 'Name', 1)
-    pdf.cell(30, 10, 'Login', 1)
-    pdf.cell(30, 10, 'Logout', 1)
-    pdf.cell(20, 10, 'Late', 1)
-    pdf.ln()
-    
-    for _, row in df.iterrows():
-        pdf.cell(40, 10, f"{row['firstname']} {row['lastname']}", 1)
-        pdf.cell(30, 10, row['login_time'][11:19], 1)
-        pdf.cell(30, 10, row['logout_time'][11:19] if row['logout_time'] else '-', 1)
-        pdf.cell(20, 10, 'Yes' if row['is_late'] else 'No', 1)
-        pdf.ln()
-    
-    report_path = f"reports/{period}_report.pdf"
-    os.makedirs(os.path.dirname(report_path), exist_ok=True)
-    pdf.output(report_path)
-    
-    return report_path
 
 # Kunlik hisobotni avtomatik yuborish
 def send_daily_report(context: CallbackContext):
