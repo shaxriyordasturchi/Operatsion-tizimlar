@@ -9,4 +9,4 @@ services:
       - key: TELEGRAM_BOT_TOKEN
         value: "7817066006:AAHRcf_wJO4Kmq5PvOrdq5BPi_eyv5vYqaM"
       - key: CHAT_ID
-        value: "-1002671611327"
+        value: "7750409176"
