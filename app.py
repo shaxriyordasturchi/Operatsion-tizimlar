@@ -11,16 +11,22 @@ bot = Bot(token=TELEGRAM_BOT_TOKEN)
 
 DB_PATH = "worktime.db"
 
-# Foydalanuvchilar (Login, Parol, Ism, Familiya)
+
+    # Foydalanuvchilar (Login, Parol, Ism, Familiya)
 users = {
-    "Ali": ("1234", "Ali", "Valiyev"),
+    "Ali":   ("1234", "Ali", "Valiyev"),
     "Shaxi": ("4321", "Shaxriyor", "Choliyev"),
-    "Fazi": ("0123", "Fazliddin", "Roziyev"),
-    "Klo":("3210", "Komil", "Rasulov"),
-     "Beha":("1230", "Behruz", "Hikmatov"),
-    "Hyot":("2340", "Hayotbek", "Bozorboyev"),
-    "Shox":("5670", "Shoxjohon", "Karimov"),
-    "Zappi":("0987", "Zafar", "Mominov"),
+    "Fazi":  ("0123", "Fazliddin", "Roziyev"),
+    "Klo":   ("3210", "Komil", "Rasulov"),
+    "Beha":  ("1230", "Behruz", "Hikmatov"),
+    "Hyot":  ("2340", "Hayotbek", "Bozorboyev"),
+    "Shox":  ("5670", "Shoxjahon", "Karimov"),
+    "Zappi": ("0987", "Zafar", "Mominov"),
+    # Yangi xodimlar (to‘g‘rilangan shaklda quyidagidek yozing)
+    "Diyor": ("1111", "Diyorbek", "Ismoilov"),
+    "Javoh": ("2222", "Javohir", "Ziyodov"),
+    "Sabir": ("3333", "Sabirjon", "Maxmudov"),
+    "Azam":  ("4444", "Azamjon", "Turgunov"),
 }
 
 # Vaqt olish (Toshkent bo‘yicha)
