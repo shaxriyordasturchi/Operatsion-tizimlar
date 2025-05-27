@@ -5,7 +5,6 @@ import pytz
 from telegram import Bot, InputFile
 import os
 import pandas as pd
-from fpdf import fpdf
 from apscheduler.schedulers.background import BackgroundScheduler
 import bcrypt
 from cryptography.fernet import Fernet
