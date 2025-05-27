@@ -10,5 +10,3 @@ services:
         value: "7817066006:AAHRcf_wJO4Kmq5PvOrdq5BPi_eyv5vYqaM"
       - key: ADMIN_CHAT_ID
         value: "7750409176"
-      - key: PORT
-        value: "8080"
