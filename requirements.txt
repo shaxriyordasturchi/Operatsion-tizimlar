@@ -13,3 +13,5 @@ Pillow==9.4.0
 sqlalchemy==1.4.46
 python-dotenv==0.21.1
 psycopg2-binary==2.9.5
+fpdf
+pyTelegramBotAPI
